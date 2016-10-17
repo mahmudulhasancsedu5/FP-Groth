@@ -41,15 +41,17 @@ for line in data:
     data_array.append(line.replace('\n','-').split(' '))
     if '-' in data_array[i]:
         data_array[i].remove('-')
-        flag=0
-        arr=[]
+        
+    arr=[]
     for val_str in data_array[i]:
 
         item=int(val_str)
         data_pointer[item].append(i)
         arr.append(item)
+        
         if item>max_item:
             max_item=item
+            
     data_array_2.append(arr)#content the data list
     i+=1
 
@@ -77,7 +79,7 @@ for i in range(len(sorted_fre_ind_list)):
 
 print 'after del =',sorted_fre_ind_list
 
-sorted_item_list=[y for (x,y) in sorted_fre_ind_list]
+sorted_item_list=[ind for (fre,ind) in sorted_fre_ind_list]
 
 #-----------change sequence of sorted item list-------------not necessary------------
 
@@ -96,7 +98,7 @@ while j<ss_len:
 
 #print 'item_list = ',sorted_item_list
 
-#-------------
+#----------------------------sort itemset accroding to support frequency--------
 print 'ok 1'
 sorted_database_list=[]
 for line in data_array_2:
@@ -107,7 +109,7 @@ for line in data_array_2:
     if len(sorted_array):
         sorted_database_list.append(sorted_array)
 #print sorted_database_list
-
+#----------------------------printed sorted db of itemset-----------------
 print 'len accepted itemset = ',len(sorted_database_list)
 print 'ok end'
 str1='\n'
@@ -117,51 +119,65 @@ outputFile.write(str1)
 
 #--------------------create FP_tree---------------------
 
+header_table=[[] for i in range(max_item+1)]
 root=[-1,0,[],-1]
 def insert(itemset,node):
-    print 'insert call --------',itemset
+    print '1 insert call --------',itemset
     if len(itemset)==0:
+        print 'Itemset is empty----->'
         return
     print len(itemset)
     first_item=itemset.pop(0)
-    print 'first_item = ',first_item
-    print 'itemset after pop = ',itemset
-    print 'node 0 = ',node[0]
+    print '2 first_item = ',first_item
+    print '3 itemset after pop = ',itemset
+    print '4 node 0 = ',node[0]
     
     if node[0]==first_item:
-        print 'Match so go to child'
+        print '5 Match so go to child'
         node[1]+=1
         if len(itemset)!=0:
             node_childs_len=len(node[2])
             if node_childs_len==0:
-                print 'No child .Create and Insert as child'
+                print '6 Current node has no child .Create and Insert as child'
                 i=[itemset[0],0,[],node]
+                print '7 Child created =  ',i,' and inserted in node with val =',node[0]
+                
+                #-------------maintain header table----------------
+                header_table[itemset[0]].append(i)
+                #--------------------------------------------------
+                    
                 node[2].append(i)
                 insert(itemset,i)
-                print 'ok'
+                
             
             else:
-                print 'Had child.Check child'
+                print '8 Current Node has child.Check child for match'
                 flag=0
                 child_list=node[2]
                 for child in child_list:
-                    print 'Check if any child value match'
+                    print '9 Check if any child value match'
                     if itemset[0]==child[0]:
-                        print 'In child match found'
+                        print '10 In child match found with = ',child[0],' go to that child .'
                         insert(itemset,child)
                         flag=1
                         break
                     
                 if flag==0:
-                    print 'No match found in child'
+                    print '11 No match found in child so create a new node and insert it as child.'
                     i=[itemset[0],0,[],node]
+                    print '12 child created = ',i
+                #-------------maintain header table----------------
+                    
+                    header_table[itemset[0]].append(i)
+                #--------------------------------------------------
                     node[2].append(i)
                     insert(itemset,i)
                     
                     
                         
         else:
-            print 'Itemset has no item to go deep.'
+            print '13 Itemset has no item to go deep.'
+            #header_table[first_item].append()
         return
     
         
@@ -180,11 +196,85 @@ a=[[1,2,4,5],[1,2,3]]
 
 book_db=[[2, 1, 5], [2, 4], [2, 3], [2, 1, 4], [1, 3], [2, 3], [1, 3], [2, 1, 3, 5], [2, 1, 3]]
 '''
+#---------------- create fp tree---------------------------------
 create_fp_tree(sorted_database_list)
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 pp.pprint(root)
 #print str(root)
+
+h_t=[(i,len(header_table[i])) for i in range(len(header_table))]
+print 'header_table = ',h_t
+
+#------------------sort item in small to large frequency-----------
+print sorted_item_list
+sorted_item_rev=[x for x in sorted_item_list]
+sorted_item_rev.reverse()
+print sorted_item_rev
+#--------------------------------------------------------------------
+
+#---------------separate each item path from FP_TRee------------------
+
+item_paths=[[] for i in range(max_item+1)]#--------------will contain all the items path-------------
+for item in sorted_item_rev:
+    pointer_item_arr=header_table[item]
+    for p_item in pointer_item_arr:
+        #p_item=[val,fre,[],parent]
+            
+        arr=[]
+        pp=p_item
+        while pp[0]!=-1:
+            arr.append((pp[0],pp[1]))#(item,fre)
+            pp=pp[3]
+        item_paths[item].append(arr)#[(item4,fre4),(item3,fre3),(item2,fre2),(item1,fre1)] path = item4 <-- item3 <-- item2 <-- item1
+        
+print item_paths[5]
+
+#----------------print all paths-------------------------------------
+
+print '----------all parh-----------'
+i=0
+for path_arr in item_paths:
+    print 'item = ',i
+    
+    j=0
+    for path in path_arr:
+        
+        j+=1
+        if len(path):
+            pp=[x for (x,y) in path]
+            pp.reverse()
+            print pp
+    i+=1
+
+#--------------------------------------------------------------------
+
+
+
+    
+    
+
+
+for item in sorted_item_list:
+
+    print item
+    print 'before rev = ',item_paths[item]
+    paths=item_paths[item]
+    for path in paths:
+        for i in range(len(path)):
+            path[i]=(path[i][0],path[0][1])
+        path.reverse()
+        path.pop()#---------------------removing the last item from item path-----------
+
+    
+    #find_all_frequent_patterns(paths[i])
+    print 'after rev = ',paths
+    
+
+    
+        
+    
+
 
 
 
